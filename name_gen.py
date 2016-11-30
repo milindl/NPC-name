@@ -7,14 +7,33 @@ But sufficiently different to be used as NPC names :)
 import name_matcher as nm
 import numpy as np
 
-class GeneticAlgorithm:
+# Configuration
+SEED_NAME = ['au', 'l', 'i','v','^', 'r']
+CROSSOVER_RATE = 0.7
+MUTATION_RATE = 0.05
+POPULATION_SIZE = 400
+GAP_PENALTY = 0.15
 
+class GeneticAlgorithm:
+    '''
+    GeneticAlgorithm is a class for a non-binary genetic algorithm to find names similar to the SEED_NAME
+    '''
     def __init__(self, crossover_rate, mutation_rate, population_size, chromosome_size_range, fitness):
+        '''
+        __init__(crossover_rate, mutation_rate, population_size, chromosome_size_range, fitness)
+        
+        crossover_rate: a float [0,1] denoting the chance of a crossover
+        mutation_rate: a float [0,1] denoting the chance of a mutation
+        population_size: the size of the chromosome population; keep large for a larger variety of names, decrease the mutation rate etc accordingly
+        chromosome_size_range: [] containing integers denoting possible sizes of the output
+        fitness: a function that, when given a chromosome as input, returns its fitness(an arbitrary number denoting how suitable a chromosome is for the task at hand)
+        '''
         self.fitness = fitness
         self.cr = crossover_rate
         self.mr = mutation_rate
         self.population = []
         self.fitnesses = []
+        # Initialize initial random pool of chromosomes
         for i in range(population_size):
             size = chromosome_size_range[np.random.randint(len(chromosome_size_range))]
             chromo = []
@@ -28,14 +47,21 @@ class GeneticAlgorithm:
 
     # To move a generation ahead, the following steps need to be performed:
     # Generate new chromosomes based on roulette wheel selection
+    ## This is dealt with by mate() and __weighted_random_choice()
     # Mutate said chromosomes
+    ## This is dealt with by mutate()
     # Evaluate fitnesses
+    ## This is dealt with by evaluate_fitness()
     # Terminate if fitness over threshold, else continue the cycle
+    # The main_loop is responsible for looping thru generations and termination
 
     def main_loop(self, generations = 1000000, fitness_thresh = 99):
         '''
-        Main loop with two possible termination conditions
-        Returns the entire population. Converted to IPA.
+        main_loop(generation = 1000000, fitness_thresh = 99)
+        generation: maximum generation to go up till
+        fitness_thresh: if max {fitnesses} is over this, terminate
+
+        Main loop goes about incrementing generations until atleast one of the above conditions is met.
         '''
         
         gencount = 0
@@ -48,11 +74,13 @@ class GeneticAlgorithm:
             self.evaluate_fitness()
             fitness_max = max(self.fitnesses)
             print(fitness_max)
-        return self.population
+
         
     def __weighted_random_choice(self):
         '''
-        Implement roulette wheel selection
+        __weighted_random_choice() -> chromosome []
+        Implement roulette wheel selection.
+        From stackoverflow, almost word to word
         '''
         max = sum(self.fitnesses)
         pick = np.random.uniform(0, max)
@@ -63,6 +91,10 @@ class GeneticAlgorithm:
                 return self.population[i]
 
     def mutate(self):
+        '''
+        mutate()
+        This method mutates EACH IPA in the chromosome with an equal probability given by the mutation_rate
+        '''
         for chromo in self.population:
             for i in range(len(chromo)):
                 if(np.random.uniform(0,1) < self.mr):
@@ -70,7 +102,9 @@ class GeneticAlgorithm:
 
     def mate(self):
         '''
-        This returns a new set of chromosomes based on roulette wheel selection
+        mate()
+        This makes the generation move forward, by generating N daughter chromosomes from N mother chromosomes.
+        Crossing over is done depending on the crossover rate
         '''
         new_pop = []
         for i in range(len(self.population)):
@@ -92,21 +126,28 @@ class GeneticAlgorithm:
         
     
     def evaluate_fitness(self):
+        '''
+        evaluate_fitness()
+        Set the values in fitnesses to the correct values computed by the fitness function
+        '''
         for i in range(len(self.population)):
             self.fitnesses[i] = self.fitness(self.population[i])
 
 
-            
-n_m = nm.NameMatcher('comparison_matrix', 0.15)
 
+
+# Testing/running code starts here
+
+n_m = nm.NameMatcher('comparison_matrix', GAP_PENALTY)
 def fn(string):
     converted_string = [nm.symlist[i] for i in string]
-    return n_m.match(['d', '@', 'n', 'j', 'e', 'l'], converted_string)*2/(len(converted_string) + 5)
+    return n_m.match(SEED_NAME, converted_string)*2/(len(converted_string) + len(SEED_NAME))
                 
     
 
 def gaTest():
-    ga = GeneticAlgorithm(0.7, 0.1, 200, [6,7,8], fn)
+    s_len = len(SEED_NAME)
+    ga = GeneticAlgorithm(CROSSOVER_RATE, MUTATION_RATE, POPULATION_SIZE, [s_len-1, s_len, s_len+1], fn)
     ga.main_loop(fitness_thresh = 0.95)
     for i in range(len(ga.population)):
         converted_string = [nm.symlist[j] for j in ga.population[i]]
@@ -114,6 +155,7 @@ def gaTest():
             print(ga.fitnesses[i], end = ' : ')
             print(' '.join(converted_string))
 
-            
 
-gaTest()
+if __name__ == '__main__':
+    gaTest()
+

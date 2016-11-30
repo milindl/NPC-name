@@ -1,9 +1,6 @@
-'''
-Given two names, this returns best possible score for the matching using the matrix
-'''
 import numpy as np
 
-# globals!
+# globals - the IPA symlist and the symlist to matrix index
 
 
 symlist = ['^','a:','@','..','e','e:(r)','i','i:','o','o:','u','u:','ai','au','Ou','e..(r)','ei','i..(r)','oi','u..(r)','b','d','f','g','h','j','k','l','m','n','N','p','r','s','S','t','tS','th','TH','v','w','z','Z','dZ']
@@ -11,7 +8,20 @@ symlist = ['^','a:','@','..','e','e:(r)','i','i:','o','o:','u','u:','ai','au','O
 p2n = {symlist[i]:i for i in range(len(symlist))}
 
 class NameMatcher:
+    '''
+    NameMatcher is a class used to compare two strings using sequence matching.
+    The best possible score is returned using certain criteria based on a scoring matrix and gap penalties.
+    '''
     def __init__(self, matrix_location, gap_penalty):
+        '''
+        __init__(matrix_location, gap_penalty)
+        This method sets up the NameMatcher.
+        matrix_location - the file location of the scoring matrix. 
+        The scoring matrix is a 44x44 symmetric matrix containing the similarity between any two alphabets from the IPA. The similarity is a number between [0,1]
+        The order of the row/colomn headings is the same as that in the global symlist.
+        It's a comma separated file with a row per line.
+        gap penalty - the score subtracted for each gap in the alignment. Typical values are [0,1]
+        '''
         f = open(matrix_location)
         self.mat = []
         for line in f:
@@ -25,7 +35,10 @@ class NameMatcher:
 
     def match(self, s1, s2):
         '''
+        match(s1,s2) -> best match score
         Finds and returns best possible match score between s1 and s2
+        s1 = [] where s1 contains elements of symlist only
+        s2 = [] where s2 contains elements of symlist only
         '''
         align_mat = np.ones((len(s1), len(s2))) * -500
         return self._S(len(s1)-1, len(s2)-1, align_mat, s1, s2)
@@ -33,13 +46,19 @@ class NameMatcher:
 
     def _S(self,i,j,mat, s1, s2):
         '''
-        use the expression
-        _S(i,j) = max of
-        1. S(i-1,j-1) + score of ij^th matching as per p2n and self.mat
-        2. x>=1 max { S(i-x, j) - x*delta }
-        3. y>=1 max { S(i, j-y) - y*delta }
+        _S(i,j,mat,s1,s2) -> S(i,j)
+        S(i,j) := maximum sum till (i,j)
+        This is the internal workhorse function to fill the s1*s2 matrix with the maximum sums.
+
+        This is almost a direct implementation of the following, where score is the value in the scoring matrix corresponding to the ith IPA of the string s1 and the jth IPA of the string s2.
+
+        S(i,j) = max{
+                      S(i-1, j-1) + score(i,j)
+                      x>=1 max{ S(i-x, j) - x*gap_penalty}
+                      y>=1 max{ S(i, j-y) - y*gap_penalty}
+                    }
         '''
-        '''Terminate it in case it already exists'''
+
         if mat[i,j] != -500:
             return mat[i,j]
         if i==0 and j==0:
@@ -72,6 +91,10 @@ class NameMatcher:
 
     
 def name_matcher_test():
+    '''
+    name_matcher_test()
+    Method to test the NameMatcher
+    '''
     nm = NameMatcher('comparison_matrix', 0.15)
     print(nm.match(['d','Ou', 'g'], ['tS','@', 't', 'au']))
 
