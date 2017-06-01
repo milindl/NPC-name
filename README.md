@@ -5,7 +5,7 @@
 * Alignment of protien sequences
 This kind of a small modification in the name leads to many possibilities for making NPC names from a "seed" name.
 
-Explanatory writeup : [http://milindl.org/writeups.html](http://milindl.org/writeups.html)
+Explanatory writeup : [http://blog.milindl.org/www/2017/06/01/NPC_name_generator.html](http://blog.milindl.org/www/2017/06/01/NPC_name_generator.html)
 
 
 ### Running
