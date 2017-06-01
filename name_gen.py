@@ -18,7 +18,7 @@ class GeneticAlgorithm:
     '''
     GeneticAlgorithm is a class for a non-binary genetic algorithm to find names similar to the SEED_NAME
     '''
-    def __init__(self, crossover_rate, mutation_rate, population_size, chromosome_size_range, fitness):
+    def __init__(self, crossover_rate, mutation_rate, population_size, chromosome_size_range, fitness, rank_selection=True):
         '''
         __init__(crossover_rate, mutation_rate, population_size, chromosome_size_range, fitness)
         
@@ -33,6 +33,11 @@ class GeneticAlgorithm:
         self.mr = mutation_rate
         self.population = []
         self.fitnesses = []
+
+        self.selection = self.__weighted_random_choice
+        if rank_selection:
+            self.selection = self.__rank_selection
+
         # Initialize initial random pool of chromosomes
         for i in range(population_size):
             size = chromosome_size_range[np.random.randint(len(chromosome_size_range))]
@@ -43,7 +48,7 @@ class GeneticAlgorithm:
             self.population.append(chromo)
             self.fitnesses.append(0)
         self.evaluate_fitness()
-        print(self.population)
+        # print(self.population)
 
     # To move a generation ahead, the following steps need to be performed:
     # Generate new chromosomes based on roulette wheel selection
@@ -90,6 +95,18 @@ class GeneticAlgorithm:
             if current > pick:
                 return self.population[i]
 
+    def __rank_selection(self):
+        '''
+        __rank_selection() -> chromosome []
+        Implement rank selection
+        '''
+        n = len(self.population)
+        sumn = (n * (n + 1)) / 2
+        arr = np.arange(1, n + 1) / sumn
+        ind = np.argmax(np.random.multinomial(1, arr))
+        pop = np.partition(self.fitnesses, ind)[ind]
+        return self.population[np.where(self.fitnesses == pop)[0][0]]
+
     def mutate(self):
         '''
         mutate()
@@ -108,10 +125,10 @@ class GeneticAlgorithm:
         '''
         new_pop = []
         for i in range(len(self.population)):
-            chromo = self.__weighted_random_choice()
+            chromo = self.selection()
             chromo2 = chromo
             if np.random.uniform(0,1) < self.cr:
-                chromo2 = self.__weighted_random_choice()
+                chromo2 = self.selection()
             new_chromo = []
             crossover = np.random.randint(min(len(chromo), len(chromo2)))
             new_chromo_length = len(chromo[:crossover]) + len(chromo2[crossover:])
@@ -147,8 +164,8 @@ def fn(string):
 
 def gaTest():
     s_len = len(SEED_NAME)
-    ga = GeneticAlgorithm(CROSSOVER_RATE, MUTATION_RATE, POPULATION_SIZE, [s_len-1, s_len, s_len+1], fn)
-    ga.main_loop(fitness_thresh = 0.95)
+    ga = GeneticAlgorithm(CROSSOVER_RATE, MUTATION_RATE, POPULATION_SIZE, [s_len-1, s_len, s_len+1], fn, rank_selection=True)
+    ga.main_loop(fitness_thresh = 0.90)
     for i in range(len(ga.population)):
         converted_string = [nm.symlist[j] for j in ga.population[i]]
         if ga.fitnesses[i] >= 0.8:
