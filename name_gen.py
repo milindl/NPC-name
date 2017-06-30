@@ -18,15 +18,16 @@ class GeneticAlgorithm:
     '''
     GeneticAlgorithm is a class for a non-binary genetic algorithm to find names similar to the SEED_NAME
     '''
-    def __init__(self, crossover_rate, mutation_rate, population_size, chromosome_size_range, fitness, rank_selection=True):
+    def __init__(self, crossover_rate, mutation_rate, population_size, chromosome_size_range, fitness, rank_selection=True, changing_population_size=False):
         '''
         __init__(crossover_rate, mutation_rate, population_size, chromosome_size_range, fitness)
-        
         crossover_rate: a float [0,1] denoting the chance of a crossover
         mutation_rate: a float [0,1] denoting the chance of a mutation
         population_size: the size of the chromosome population; keep large for a larger variety of names, decrease the mutation rate etc accordingly
         chromosome_size_range: [] containing integers denoting possible sizes of the output
         fitness: a function that, when given a chromosome as input, returns its fitness(an arbitrary number denoting how suitable a chromosome is for the task at hand)
+        rank_selection: when true, rank selection is chosen as the selection for next gen
+        changing_population_size: when true, the population halves every 10 generations then grows back
         '''
         self.fitness = fitness
         self.cr = crossover_rate
@@ -38,8 +39,11 @@ class GeneticAlgorithm:
         if rank_selection:
             self.selection = self.__rank_selection
 
+        self.population_size = population_size
+        self.original_population_size = population_size
+
         # Initialize initial random pool of chromosomes
-        for i in range(population_size):
+        for i in range(self.population_size):
             size = chromosome_size_range[np.random.randint(len(chromosome_size_range))]
             chromo = []
             for j in range(size):
@@ -68,7 +72,7 @@ class GeneticAlgorithm:
 
         Main loop goes about incrementing generations until atleast one of the above conditions is met.
         '''
-        
+
         gencount = 0
         fitness_max = 0
         while gencount<generations and fitness_max<fitness_thresh:
@@ -80,7 +84,6 @@ class GeneticAlgorithm:
             fitness_max = max(self.fitnesses)
             print(fitness_max)
 
-        
     def __weighted_random_choice(self):
         '''
         __weighted_random_choice() -> chromosome []
@@ -124,7 +127,8 @@ class GeneticAlgorithm:
         Crossing over is done depending on the crossover rate
         '''
         new_pop = []
-        for i in range(len(self.population)):
+
+        for i in range(self.population_size):
             chromo = self.selection()
             chromo2 = chromo
             if np.random.uniform(0,1) < self.cr:
@@ -140,15 +144,20 @@ class GeneticAlgorithm:
 
             new_pop.append(new_chromo)
         self.population = new_pop
-        
-    
+        if self.population_size >= self.original_population_size:
+            self.population_size = self.population_size / 2
+        else:
+            self.population_size += self.original_population_size / 10
+        self.population_size = int(self.population_size)
+
     def evaluate_fitness(self):
         '''
         evaluate_fitness()
         Set the values in fitnesses to the correct values computed by the fitness function
         '''
+        self.fitnesses = list()
         for i in range(len(self.population)):
-            self.fitnesses[i] = self.fitness(self.population[i])
+            self.fitnesses.append(self.fitness(self.population[i]))
 
 
 
@@ -159,12 +168,10 @@ n_m = nm.NameMatcher('comparison_matrix', GAP_PENALTY)
 def fn(string):
     converted_string = [nm.symlist[i] for i in string]
     return n_m.match(SEED_NAME, converted_string)*2/(len(converted_string) + len(SEED_NAME))
-                
-    
 
 def gaTest():
     s_len = len(SEED_NAME)
-    ga = GeneticAlgorithm(CROSSOVER_RATE, MUTATION_RATE, POPULATION_SIZE, [s_len-1, s_len, s_len+1], fn, rank_selection=True)
+    ga = GeneticAlgorithm(CROSSOVER_RATE, MUTATION_RATE, POPULATION_SIZE, [s_len-1, s_len, s_len+1], fn, rank_selection=True, changing_population_size=True)
     ga.main_loop(fitness_thresh = 0.90)
     for i in range(len(ga.population)):
         converted_string = [nm.symlist[j] for j in ga.population[i]]
